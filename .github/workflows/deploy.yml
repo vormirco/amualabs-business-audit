@@ -1,0 +1,119 @@
+name: Deploy Business Audit Tool
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run tests
+      run: npm test
+      env:
+        PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci --only=production
+
+    - name: Create deployment package
+      run: |
+        mkdir -p deploy
+        cp business-audit-server.js deploy/server.js
+        cp package.json deploy/
+        cp -r public deploy/
+        cp README.md deploy/
+
+        # Create .env file from secrets
+        echo "PERPLEXITY_API_KEY=${{ secrets.PERPLEXITY_API_KEY }}" > deploy/.env
+        echo "HETZNER_API_KEY=${{ secrets.HETZNER_API_KEY }}" >> deploy/.env
+        echo "PORT=3000" >> deploy/.env
+        echo "NODE_ENV=production" >> deploy/.env
+        chmod 600 deploy/.env
+
+    - name: Deploy to Hetzner VPS
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          # Stop existing server
+          pm2 stop amualabs-tools 2>/dev/null || true
+          pm2 delete amualabs-tools 2>/dev/null || true
+
+          # Backup current deployment
+          mv /root/amualabs-tools /root/amualabs-tools-backup-$(date +%Y%m%d-%H%M%S) 2>/dev/null || true
+
+          # Create fresh directory
+          mkdir -p /root/amualabs-tools
+
+    - name: Upload files to VPS
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        source: "deploy/*"
+        target: "/root/amualabs-tools/"
+        strip_components: 1
+
+    - name: Setup and start server
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          cd /root/amualabs-tools
+
+          # Install Node.js if needed
+          curl -fsSL https://deb.nodesource.com/setup_18.x | bash - 2>/dev/null || true
+          apt update && apt install -y nodejs npm 2>/dev/null || true
+
+          # Install PM2 globally
+          npm install -g pm2 2>/dev/null || true
+
+          # Install dependencies
+          npm install --production
+
+          # Secure environment file
+          chmod 600 .env
+
+          # Start server with PM2
+          pm2 start server.js --name "amualabs-tools"
+          pm2 startup ubuntu -u root --hp /root 2>/dev/null || true
+          pm2 save
+
+          # Show status
+          pm2 status
+
+          echo "✅ Deployment successful!"
+          echo "🌐 Tool available at: http://78.47.220.148:3000/business-audit.html"

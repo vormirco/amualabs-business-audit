@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Audit Tool - Amualabs</title>
+    <style>
+        :root {
+            /* Neo Brutalist Colors */
+            --black: #000000;
+            --charcoal: #0A0A0A;
+            --dark-gray: #1A1A1A;
+            --medium-gray: #2A2A2A;
+            --light-gray: #6B6B6B;
+            --white: #FFFFFF;
+            --orange: #FF6B35;
+            --orange-glow: rgba(255, 107, 53, 0.2);
+            --terminal-green: #00FF41;
+            --terminal-red: #FF4444;
+            --terminal-yellow: #FFFF00;
+            --terminal-purple: #9D4EDD;
+
+            /* Typography */
+            --font-mono: 'Fragment Mono', 'IBM Plex Mono', 'Menlo', 'Monaco', monospace;
+            --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+            /* Spacing */
+            --space-1: 4px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 20px;
+            --space-6: 24px;
+            --space-8: 32px;
+            --space-10: 40px;
+            --space-12: 48px;
+            --space-16: 64px;
+            --space-20: 80px;
+
+            /* Transitions */
+            --transition-fast: 0.15s linear;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-mono);
+            background: var(--black);
+            color: var(--white);
+            line-height: 1.4;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Terminal Grid Background */
+        .terminal-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0.03;
+            background-image: 
+                repeating-linear-gradient(90deg, transparent, transparent 19px, var(--light-gray) 20px),
+                repeating-linear-gradient(0deg, transparent, transparent 19px, var(--light-gray) 20px);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--space-5);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: var(--space-16);
+            padding: var(--space-20) 0;
+        }
+
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-2);
+            margin-bottom: var(--space-4);
+            font-family: var(--font-mono);
+        }
+
+        .terminal-prompt {
+            color: var(--terminal-green);
+            font-size: 18px;
+        }
+
+        .terminal-command {
+            color: var(--orange);
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .cursor-blink {
+            width: 2px;
+            height: 20px;
+            background: var(--orange);
+            margin-left: var(--space-1);
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .header h1 {
+            font-family: var(--font-sans);
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--white);
+            margin-bottom: var(--space-4);
+            letter-spacing: -0.02em;
+        }
+
+        .header p {
+            font-size: 16px;
+            color: var(--light-gray);
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .audit-form {
+            background: var(--charcoal);
+            border: 1px solid var(--dark-gray);
+            padding: var(--space-8);
+            margin-bottom: var(--space-6);
+            position: relative;
+            transition: border-color var(--transition-fast);
+        }
+
+        .audit-form:hover {
+            border-color: var(--orange);
+        }
+
+        .form-group {
+            margin-bottom: var(--space-6);
+        }
+
+        label {
+            display: block;
+            margin-bottom: var(--space-3);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--orange);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: var(--space-4);
+            background: var(--black);
+            border: 1px solid var(--medium-gray);
+            color: var(--white);
+            font-family: var(--font-mono);
+            font-size: 16px;
+            transition: border-color var(--transition-fast);
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--orange);
+        }
+
+        input[type="text"]::placeholder {
+            color: var(--light-gray);
+            font-family: var(--font-mono);
+        }
+
+        .audit-btn {
+            width: 100%;
+            background: var(--orange);
+            color: var(--black);
+            border: 1px solid var(--orange);
+            padding: var(--space-4) var(--space-6);
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .audit-btn:hover {
+            background: var(--black);
+            color: var(--orange);
+        }
+
+        .audit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: var(--medium-gray);
+            color: var(--light-gray);
+            border-color: var(--medium-gray);
+        }
+
+        .loading {
+            background: var(--charcoal);
+            border: 1px solid var(--orange);
+            padding: var(--space-8);
+            text-align: center;
+            margin-bottom: var(--space-6);
+            display: none;
+        }
+
+        .terminal-spinner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-4);
+            margin-bottom: var(--space-4);
+        }
+
+        .spinner-dots {
+            display: flex;
+            gap: var(--space-2);
+        }
+
+        .spinner-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--orange);
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        .spinner-dot:nth-child(2) { animation-delay: 0.2s; }
+        .spinner-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .loading-text {
+            color: var(--orange);
+            font-family: var(--font-mono);
+            font-size: 14px;
+            margin-bottom: var(--space-2);
+        }
+
+        .loading-subtext {
+            color: var(--light-gray);
+            font-size: 12px;
+        }
+
+        .results {
+            display: none;
+        }
+
+        .audit-section {
+            background: var(--charcoal);
+            border: 1px solid var(--dark-gray);
+            margin-bottom: var(--space-6);
+            transition: border-color var(--transition-fast);
+        }
+
+        .audit-section:hover {
+            border-color: var(--orange);
+        }
+
+        .section-header {
+            background: var(--dark-gray);
+            color: var(--white);
+            padding: var(--space-4) var(--space-6);
+            border-bottom: 1px solid var(--medium-gray);
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .section-icon {
+            color: var(--orange);
+            font-size: 16px;
+        }
+
+        .section-content {
+            padding: var(--space-6);
+            line-height: 1.6;
+            color: var(--white);
+            font-size: 14px;
+        }
+
+        .recommendations {
+            border-color: var(--terminal-green);
+        }
+
+        .recommendations .section-header {
+            background: var(--terminal-green);
+            color: var(--black);
+        }
+
+        .recommendations .section-icon {
+            color: var(--black);
+        }
+
+        .error {
+            background: var(--terminal-red);
+            color: var(--white);
+            border: 1px solid var(--terminal-red);
+            padding: var(--space-4);
+            margin-bottom: var(--space-4);
+            font-family: var(--font-mono);
+            font-size: 14px;
+            display: none;
+        }
+
+        .amualabs-cta {
+            background: var(--orange);
+            color: var(--black);
+            text-align: center;
+            padding: var(--space-8);
+            margin-top: var(--space-8);
+            border: 1px solid var(--orange);
+        }
+
+        .cta-title {
+            font-family: var(--font-sans);
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: var(--space-2);
+        }
+
+        .cta-description {
+            font-size: 16px;
+            margin-bottom: var(--space-6);
+            font-family: var(--font-mono);
+        }
+
+        .cta-btn {
+            background: var(--black);
+            color: var(--orange);
+            border: 1px solid var(--black);
+            padding: var(--space-4) var(--space-8);
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all var(--transition-fast);
+            display: inline-block;
+        }
+
+        .cta-btn:hover {
+            background: var(--white);
+            color: var(--black);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: var(--space-4);
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .audit-form,
+            .loading,
+            .section-content {
+                padding: var(--space-5);
+            }
+
+            .amualabs-cta {
+                padding: var(--space-6);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal-grid"></div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="terminal-header">
+                <span class="terminal-prompt">$</span>
+                <span class="terminal-command">amualabs.business-audit</span>
+                <div class="cursor-blink"></div>
+            </div>
+            <h1>Business Audit Tool</h1>
+            <p>// Comprehensive AI-powered analysis of your website, SEO, business strategy, and automation opportunities</p>
+        </div>
+
+        <div class="audit-form">
+            <form id="auditForm">
+                <div class="form-group">
+                    <label for="domain">[INPUT] Website Domain</label>
+                    <input 
+                        type="text" 
+                        id="domain" 
+                        placeholder="example.com (without http://)"
+                        required
+                    >
+                </div>
+                <button type="submit" class="audit-btn" id="auditBtn">
+                    [EXECUTE] Start Comprehensive Audit
+                </button>
+            </form>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="loading" id="loading">
+            <div class="terminal-spinner">
+                <div class="spinner-dots">
+                    <div class="spinner-dot"></div>
+                    <div class="spinner-dot"></div>
+                    <div class="spinner-dot"></div>
+                </div>
+            </div>
+            <p class="loading-text">ANALYZING BUSINESS DIMENSIONS...</p>
+            <p class="loading-subtext">// Processing: SEO, Website, Business, Social, Funding analysis</p>
+        </div>
+
+        <div class="results" id="results">
+            <div class="audit-section">
+                <div class="section-header">
+                    <span class="section-icon">🔍</span>
+                    [SEO] Search Engine Analysis
+                </div>
+                <div class="section-content" id="seo-content"></div>
+            </div>
+
+            <div class="audit-section">
+                <div class="section-header">
+                    <span class="section-icon">💻</span>
+                    [WEBSITE] Technical Audit
+                </div>
+                <div class="section-content" id="website-content"></div>
+            </div>
+
+            <div class="audit-section">
+                <div class="section-header">
+                    <span class="section-icon">📊</span>
+                    [BUSINESS] Market Analysis
+                </div>
+                <div class="section-content" id="business-content"></div>
+            </div>
+
+            <div class="audit-section">
+                <div class="section-header">
+                    <span class="section-icon">📱</span>
+                    [SOCIAL] Digital Presence
+                </div>
+                <div class="section-content" id="social-content"></div>
+            </div>
+
+            <div class="audit-section">
+                <div class="section-header">
+                    <span class="section-icon">💰</span>
+                    [FUNDING] Investment Status
+                </div>
+                <div class="section-content" id="funding-content"></div>
+            </div>
+
+            <div class="audit-section recommendations">
+                <div class="section-header">
+                    <span class="section-icon">🤖</span>
+                    [AI-AGENTS] Revenue & Cost Opportunities
+                </div>
+                <div class="section-content" id="recommendations-content"></div>
+            </div>
+
+            <div class="amualabs-cta">
+                <h3 class="cta-title">Ready to implement AI agents?</h3>
+                <p class="cta-description">// Get a free 30-minute strategy call to transform your operations</p>
+                <a href="https://amualabs.com/contact" class="cta-btn" target="_blank">[CONTACT] Schedule Strategy Call</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('auditForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const domain = document.getElementById('domain').value.trim();
+            const auditBtn = document.getElementById('auditBtn');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            const error = document.getElementById('error');
+
+            // Reset UI
+            error.style.display = 'none';
+            results.style.display = 'none';
+            loading.style.display = 'block';
+            auditBtn.disabled = true;
+
+            try {
+                const response = await fetch('/audit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ domain })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Audit failed');
+                }
+
+                // Display results
+                document.getElementById('seo-content').innerHTML = formatContent(data.audit.seo);
+                document.getElementById('website-content').innerHTML = formatContent(data.audit.website);
+                document.getElementById('business-content').innerHTML = formatContent(data.audit.business);
+                document.getElementById('social-content').innerHTML = formatContent(data.audit.social);
+                document.getElementById('funding-content').innerHTML = formatContent(data.audit.funding);
+                document.getElementById('recommendations-content').innerHTML = formatContent(data.audit.agentRecommendations);
+
+                loading.style.display = 'none';
+                results.style.display = 'block';
+
+            } catch (err) {
+                console.error('Audit error:', err);
+                error.textContent = err.message;
+                error.style.display = 'block';
+                loading.style.display = 'none';
+            } finally {
+                auditBtn.disabled = false;
+            }
+        });
+
+        function formatContent(content) {
+            if (!content) return '<span style="color: var(--light-gray); font-family: var(--font-mono);">// Analysis not available</span>';
+            
+            // Convert markdown-like formatting to HTML with Neo Brutalist styling
+            return content
+                .replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--orange); font-family: var(--font-mono);">$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em style="color: var(--terminal-green);">$1</em>')
+                .replace(/##\s+(.*?)\n/g, '<h3 style="color: var(--orange); font-family: var(--font-mono); text-transform: uppercase; font-size: 14px; margin: 1rem 0 0.5rem 0; letter-spacing: 0.1em;">[$1]</h3>')
+                .replace(/- (.*?)\n/g, '<div style="margin: 0.5rem 0; color: var(--white); font-size: 14px;">→ $1</div>')
+                .replace(/\n\n/g, '</p><p style="margin-bottom: 1rem;">')
+                .replace(/\n/g, '<br>')
+                .replace(/^/, '<p style="margin-bottom: 1rem;">')
+                .replace(/$/, '</p>')
+                .replace(/🤖/g, '<span style="color: var(--terminal-green);">🤖</span>')
+                .replace(/📊|📈|📉|💰|🔍|📱|💻|🚀|⚡|✅|❌|⚠️/g, '<span style="color: var(--orange);">$&</span>')
+                .replace(/\$[\d,]+/g, '<span style="color: var(--terminal-green); font-family: var(--font-mono); font-weight: 600;">$&</span>')
+                .replace(/(\d+%)/g, '<span style="color: var(--orange); font-family: var(--font-mono); font-weight: 600;">$1</span>');
+        }
+    </script>
+</body>
+</html>
